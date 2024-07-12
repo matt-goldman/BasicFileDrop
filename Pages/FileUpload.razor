@@ -1,0 +1,84 @@
+﻿@page "/file-upload"
+@inject UploadService upload
+
+<h3>File Upload</h3>
+
+<div @ref="fileDropContainer" class="file-drop-zone @HoverClass" @ondragenter="OnDragEnter" @ondragleave="OnDragLeave" @ondragover="OnDragEnter">
+    <InputFile OnChange="@UploadFilesChanged" @ref="inputFile" multiple  />
+</div>
+
+@if (uploading)
+{
+    <div class="spinner-grow" role="status">
+        <span class="visually-hidden">Uploading...</span>
+    </div>
+}
+
+<p>@statusMessage</p>
+<div class="error-message-container">
+    <p>@ErrorMessage</p>
+</div>
+
+<h3>Uploaded files:</h3>
+<p>
+    <ul>
+        @if(UploadedFiles.Any())
+        {
+            @foreach(var file in UploadedFiles)
+            {
+                <li>@file</li>
+            }
+        }
+    </ul>
+</p>
+
+@code {
+    private InputFile inputFile;
+    private string statusMessage;
+    private string ErrorMessage;
+    ElementReference fileDropContainer;
+    private string HoverClass;
+    private List<string> UploadedFiles = new();
+    long maxFileSize = 1024L * 1024L * 1024L * 2L;
+    bool uploading = false;
+
+    void OnDragEnter(DragEventArgs e) => HoverClass = "hover";
+    void OnDragLeave(DragEventArgs e) => HoverClass = string.Empty;
+
+    private async Task UploadFilesChanged(InputFileChangeEventArgs args)
+    {
+        uploading = true;
+
+        UploadedFiles.Clear();
+
+        statusMessage = "Uploading files...";
+
+        var files = args.GetMultipleFiles();
+
+        if (files.Count == 0)
+        {
+            statusMessage = "No files dropped.";
+            return;
+        }
+
+        foreach (var file in files)
+        {
+            statusMessage = $"Uploading file: {file.Name}";
+
+            try
+            {
+                await upload.Upload(file.Name, file.OpenReadStream(maxFileSize));
+                UploadedFiles.Add($"✅ Succeeded: {file.Name}");
+            }
+            catch(Exception e)
+            {
+                UploadedFiles.Add($"⛔ FAILED: {file.Name}");
+                ErrorMessage = e.Message;
+            }
+        }
+
+        uploading = false;
+
+        statusMessage = string.Empty;
+    }
+}
