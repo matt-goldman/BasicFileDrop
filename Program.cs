@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 using BasicFileDrop.Data;
 using BasicFileDrop.Services;
 
@@ -10,6 +8,7 @@ builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddSingleton<WeatherForecastService>();
 builder.Services.AddScoped<UploadService>();
+builder.Services.AddScoped<ServerFilesService>();
 
 var app = builder.Build();
 

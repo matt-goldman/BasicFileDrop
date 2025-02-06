@@ -1,20 +1,13 @@
 ﻿namespace BasicFileDrop.Services;
 
-public class UploadService
+public class UploadService(IWebHostEnvironment environment)
 {
-    private readonly IWebHostEnvironment _environment;
-
-    public UploadService(IWebHostEnvironment environment)
-    {
-        _environment = environment;
-    }
-
     public async Task<string> Upload(string fileName, Stream fileData)
     {
         if (fileName == null || fileData.Length == 0)
             return "No file uploaded.";
 
-        var uploadPath = Path.Combine(_environment.ContentRootPath, "UploadedFiles");
+        var uploadPath = Path.Combine(environment.ContentRootPath, "UploadedFiles");
         if (!Directory.Exists(uploadPath))
         {
             Directory.CreateDirectory(uploadPath);

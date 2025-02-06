@@ -1,5 +1,8 @@
 ﻿@page "/file-upload"
+@using System.Text
 @inject UploadService upload
+@inject ServerFilesService serverFiles
+@inject IJSRuntime js
 
 <h3>File Upload</h3>
 
@@ -29,8 +32,38 @@
                 <li>@file</li>
             }
         }
+        else
+        {
+            <li>No files uploaded.</li>
+        }
     </ul>
 </p>
+
+<h3>Server files:</h3>
+@if (ServerFiles.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="col">Filename</th>
+                <th scope="col">Download</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var file in ServerFiles)
+            {
+                <tr>
+                    <td>@file</td>
+                    <td><button class="btn btn-secondary" @onclick="async () => await DownloadFile(file)"><span class="oi oi-data-transfer-download" aria-hidden="true" disabled="@disableDownload"></span></button></td>
+                </tr>
+            }
+        </tbody>
+    </table>   
+}
+else
+{
+    <p>No files on the server</p>
+}
 
 @code {
     private InputFile inputFile;
@@ -38,12 +71,26 @@
     private string ErrorMessage;
     ElementReference fileDropContainer;
     private string HoverClass;
-    private List<string> UploadedFiles = new();
+    private List<string> UploadedFiles = [];
+    private List<string> ServerFiles = [];
     long maxFileSize = 1024L * 1024L * 1024L * 2L;
     bool uploading = false;
 
+    bool disableDownload = false;
+
     void OnDragEnter(DragEventArgs e) => HoverClass = "hover";
     void OnDragLeave(DragEventArgs e) => HoverClass = string.Empty;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+
+        if (firstRender)
+        {
+            ServerFiles.AddRange(serverFiles.GetFiles());
+            StateHasChanged();
+        }
+    }
 
     private async Task UploadFilesChanged(InputFileChangeEventArgs args)
     {
@@ -80,5 +127,38 @@
         uploading = false;
 
         statusMessage = string.Empty;
+    }
+
+    private async Task DownloadFile(string filename)
+    {
+        disableDownload = true;
+
+        StateHasChanged();
+
+        using var fileData = serverFiles.GetFile(filename);
+
+        if (fileData == null)
+        {
+            ErrorMessage = "File not found on server.";
+            disableDownload = false;
+            StateHasChanged();
+            return;
+        }
+
+        fileData.Position = 0;
+
+        var fileBytes = new byte[fileData.Length];
+
+        using var reader = new StreamReader(fileData);
+
+        await reader.BaseStream.ReadAsync(fileBytes, 0, (int)fileData.Length);
+
+        var base64 = Convert.ToBase64String(fileBytes);
+
+        await js.InvokeVoidAsync("saveAsFile", filename, base64);
+
+        disableDownload = false;
+
+        StateHasChanged();
     }
 }
